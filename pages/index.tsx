@@ -1,15 +1,8 @@
 import type { NextPage } from 'next'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, CameraShake } from '@react-three/drei'
-import { WebGL1Renderer } from 'three'
 import { useControls } from 'leva'
 import Particles from '../components/Particles/Particles'
-
-const renderer = (canvas: HTMLCanvasElement) => new WebGL1Renderer({
-    canvas,
-    antialias: true,
-    alpha: true
-})
 
 const Home: NextPage = () => {
 	const props = useControls({
@@ -22,7 +15,7 @@ const Home: NextPage = () => {
 	  })
 	return (
 		<div className='fixed inset-0 z-10'>
-			<Canvas linear={true} camera={{position: [0,0,6], fov:25}} gl={renderer}>
+			<Canvas linear={true} camera={{position: [0,0,6], fov:25}}>
 				<OrbitControls makeDefault autoRotate autoRotateSpeed={0.5} zoomSpeed={0.1} />
 				<CameraShake yawFrequency={1} maxYaw={0.05} pitchFrequency={1} maxPitch={0.05} rollFrequency={0.5} maxRoll={0.5} intensity={0.2} />
 				<Particles {...props} />

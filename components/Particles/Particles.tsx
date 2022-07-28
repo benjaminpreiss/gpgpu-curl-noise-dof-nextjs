@@ -1,17 +1,12 @@
 
-import { useMemo, useRef, useState } from 'react'
-import { FloatType, RGBFormat, DataTexture, WebGL1Renderer, NearestFilter, Vector3, ShaderMaterial, MathUtils, Scene, OrthographicCamera } from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { FloatType, RGBAFormat, DataTexture, NearestFilter, Vector3, ShaderMaterial, MathUtils, Scene, OrthographicCamera, NormalBlending } from 'three'
+import { useFrame, extend } from '@react-three/fiber'
 import { useFBO } from '@react-three/drei'
-import '../../materials/dofPointsMaterial'
-import vertex from '../../shaders/sim-dot/vertex.glsl'
-import fragment from '../../shaders/sim-dot/fragment.glsl'
-
-const renderer = (canvas: HTMLCanvasElement) => new WebGL1Renderer({
-    canvas,
-    antialias: true,
-    alpha: true
-})
+import dofVertex from '../../shaders/sim-dot/vertex.glsl'
+import dofFragment from '../../shaders/sim-dot/fragment.glsl'
+import simVertex from '../../shaders/dof-dot/vertex.glsl'
+import simFragment from '../../shaders/dof-dot/fragment.glsl'
 
 function getPoint(v:Vector3, size:number, data: Float32Array, offset: number): ArrayLike<number> {
     v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)
@@ -33,8 +28,16 @@ export default function Particles({ speed, fov, aperture, focus, curl, size = 51
     const [scene] = useState(() => new Scene())
     const [camera] = useState(() => new OrthographicCamera(-1, 1, 1, -1, 1 / Math.pow(2, 53), 1))
     const [positions] = useState(() => new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0]))
+    const texture = useMemo(
+        () => {
+          const t = new DataTexture(getSphere(512 * 512, 128), 512, 512, RGBAFormat, FloatType)
+          t.needsUpdate = true
+          return t
+        },
+        []
+    );
     const [uvs] = useState(() => new Float32Array([0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0]))
-    const target = useFBO(size, size, { minFilter: NearestFilter, magFilter: NearestFilter, format: RGBFormat, type: FloatType })
+    const target = useFBO(size, size, { minFilter: NearestFilter, magFilter: NearestFilter, format: RGBAFormat, type: FloatType })
     // Normalize points
     const particles = useMemo(() => {
         const length = size * size
@@ -67,8 +70,8 @@ export default function Particles({ speed, fov, aperture, focus, curl, size = 51
         <>
             {/* Simulation goes into a FBO/Off-buffer */}
             <mesh>
-            <shaderMaterial ref={simRef} vertexShader={vertex} fragmentShader={fragment} uniforms={{
-                positions: { value: new DataTexture(getSphere(512 * 512, 128), 512, 512, RGBFormat, FloatType) },
+            <shaderMaterial ref={simRef} vertexShader={dofVertex} fragmentShader={dofFragment} uniforms={{
+                positions: { value: texture },
                 uTime: { value: 0 },
                 uCurlFreq: { value: 0.25 }
             }} />
@@ -79,7 +82,14 @@ export default function Particles({ speed, fov, aperture, focus, curl, size = 51
             </mesh>
             {/* The result of which is forwarded into a pointcloud via data-texture */}
             <points {...props}>
-                <dofPointsMaterial ref={renderRef} />
+                
+            <shaderMaterial ref={renderRef} vertexShader={simVertex} fragmentShader={simFragment} transparent={true} blending={NormalBlending} depthWrite={false} uniforms={{
+                positions: { value: null },
+                uTime: { value: 0 },
+                uFocus: { value: 5.1 },
+                uFov: { value: 50 },
+                uBlur: { value: 30 }
+            }} />
                 <bufferGeometry>
                     <bufferAttribute attach="attributes-position" count={particles.length / 3} array={particles} itemSize={3} />
                 </bufferGeometry>
