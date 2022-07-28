@@ -5,7 +5,7 @@ uniform float uFov;
 uniform float uBlur;
 varying float vDistance;
 void main() { 
-    vec3 pos = texture2D(positions, position.xy).xyz;
+    vec3 pos = texture(positions, position.xy).xyz;
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     vDistance = abs(uFocus - -mvPosition.z);

@@ -14,7 +14,7 @@ const Home: NextPage = () => {
 		size: 512
 	  })
 	return (
-		<div className='fixed inset-0 z-10'>
+		<div className='fixed inset-0 z-10 bg-black'>
 			<Canvas linear={true} camera={{position: [0,0,6], fov:25}}>
 				<OrbitControls makeDefault autoRotate autoRotateSpeed={0.5} zoomSpeed={0.1} />
 				<CameraShake yawFrequency={1} maxYaw={0.05} pitchFrequency={1} maxPitch={0.05} rollFrequency={0.5} maxRoll={0.5} intensity={0.2} />

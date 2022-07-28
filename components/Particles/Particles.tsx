@@ -1,23 +1,27 @@
 
-import { useMemo, useRef, useState, useEffect } from 'react'
-import { FloatType, RGBAFormat, DataTexture, NearestFilter, Vector3, ShaderMaterial, MathUtils, Scene, OrthographicCamera, NormalBlending } from 'three'
-import { useFrame, extend } from '@react-three/fiber'
+import { useMemo, useRef, useState } from 'react'
+import { FloatType, RGBAFormat, DataTexture, NearestFilter, Vector4, ShaderMaterial, MathUtils, Scene, OrthographicCamera, NormalBlending } from 'three'
+import { useFrame, extend, createPortal } from '@react-three/fiber'
 import { useFBO } from '@react-three/drei'
-import dofVertex from '../../shaders/sim-dot/vertex.glsl'
-import dofFragment from '../../shaders/sim-dot/fragment.glsl'
-import simVertex from '../../shaders/dof-dot/vertex.glsl'
-import simFragment from '../../shaders/dof-dot/fragment.glsl'
+import simVertex from '../../shaders/sim-dot/vertex.glsl'
+import simFragment from '../../shaders/sim-dot/fragment.glsl'
+import dofVertex from '../../shaders/dof-dot/vertex.glsl'
+import dofFragment from '../../shaders/dof-dot/fragment.glsl'
+import '../../materials/dofPointsMaterial'
+import '../../materials/simulationMaterial'
 
-function getPoint(v:Vector3, size:number, data: Float32Array, offset: number): ArrayLike<number> {
-    v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)
+extend({ShaderMaterial})
+
+function getPoint(v:Vector4, size:number, data: Float32Array, offset: number): ArrayLike<number> {
+    v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1, 0)
     if (v.length() > 1) return getPoint(v, size, data, offset)
     return v.normalize().multiplyScalar(size).toArray(data, offset)
 }
 
-function getSphere(count: number, size: number, p = new Vector3()) {
-    const data = new Float32Array(count * 3)
-    for (let i = 0; i < count * 3; i += 3) getPoint(p, size, data, i)
-    return data
+function getSphere(count:number, size:number, p = new Vector4()) {
+  const data = new Float32Array(count * 4)
+  for (let i = 0; i < count * 4; i += 4) getPoint(p, size, data, i)
+  return data
 }
 
 export default function Particles({ speed, fov, aperture, focus, curl, size = 512, ...props}: {speed: number, fov: number, aperture: number, focus: number, curl:number, size:number}) {
@@ -69,27 +73,20 @@ export default function Particles({ speed, fov, aperture, focus, curl, size = 51
     return (
         <>
             {/* Simulation goes into a FBO/Off-buffer */}
+            {createPortal(
             <mesh>
-            <shaderMaterial ref={simRef} vertexShader={dofVertex} fragmentShader={dofFragment} uniforms={{
-                positions: { value: texture },
-                uTime: { value: 0 },
-                uCurlFreq: { value: 0.25 }
-            }} />
+            <simulationMaterial ref={simRef} />
             <bufferGeometry>
                 <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
                 <bufferAttribute attach="attributes-uv" count={uvs.length / 2} array={uvs} itemSize={2} />
             </bufferGeometry>
-            </mesh>
+            </mesh>,
+            scene
+            )}
             {/* The result of which is forwarded into a pointcloud via data-texture */}
             <points {...props}>
                 
-            <shaderMaterial ref={renderRef} vertexShader={simVertex} fragmentShader={simFragment} transparent={true} blending={NormalBlending} depthWrite={false} uniforms={{
-                positions: { value: null },
-                uTime: { value: 0 },
-                uFocus: { value: 5.1 },
-                uFov: { value: 50 },
-                uBlur: { value: 30 }
-            }} />
+            <dofPointsMaterial ref={renderRef} />
                 <bufferGeometry>
                     <bufferAttribute attach="attributes-position" count={particles.length / 3} array={particles} itemSize={3} />
                 </bufferGeometry>
