@@ -1,28 +1,11 @@
 
 import { useMemo, useRef, useState } from 'react'
-import { FloatType, RGBAFormat, DataTexture, NearestFilter, Vector4, ShaderMaterial, MathUtils, Scene, OrthographicCamera, NormalBlending } from 'three'
-import { useFrame, extend, createPortal } from '@react-three/fiber'
+import { FloatType, RGBAFormat, NearestFilter, ShaderMaterial, MathUtils, Scene, OrthographicCamera } from 'three'
+import { useFrame, createPortal } from '@react-three/fiber'
 import { useFBO } from '@react-three/drei'
-import simVertex from '../../shaders/sim-dot/vertex.glsl'
-import simFragment from '../../shaders/sim-dot/fragment.glsl'
-import dofVertex from '../../shaders/dof-dot/vertex.glsl'
-import dofFragment from '../../shaders/dof-dot/fragment.glsl'
 import '../../materials/dofPointsMaterial'
 import '../../materials/simulationMaterial'
 
-extend({ShaderMaterial})
-
-function getPoint(v:Vector4, size:number, data: Float32Array, offset: number): ArrayLike<number> {
-    v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1, 0)
-    if (v.length() > 1) return getPoint(v, size, data, offset)
-    return v.normalize().multiplyScalar(size).toArray(data, offset)
-}
-
-function getSphere(count:number, size:number, p = new Vector4()) {
-  const data = new Float32Array(count * 4)
-  for (let i = 0; i < count * 4; i += 4) getPoint(p, size, data, i)
-  return data
-}
 
 export default function Particles({ speed, fov, aperture, focus, curl, size = 512, ...props}: {speed: number, fov: number, aperture: number, focus: number, curl:number, size:number}) {
     const renderRef = useRef<ShaderMaterial>(null)
@@ -32,14 +15,6 @@ export default function Particles({ speed, fov, aperture, focus, curl, size = 51
     const [scene] = useState(() => new Scene())
     const [camera] = useState(() => new OrthographicCamera(-1, 1, 1, -1, 1 / Math.pow(2, 53), 1))
     const [positions] = useState(() => new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0]))
-    const texture = useMemo(
-        () => {
-          const t = new DataTexture(getSphere(512 * 512, 128), 512, 512, RGBAFormat, FloatType)
-          t.needsUpdate = true
-          return t
-        },
-        []
-    );
     const [uvs] = useState(() => new Float32Array([0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0]))
     const target = useFBO(size, size, { minFilter: NearestFilter, magFilter: NearestFilter, format: RGBAFormat, type: FloatType })
     // Normalize points
